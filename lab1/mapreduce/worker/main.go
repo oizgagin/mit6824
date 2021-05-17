@@ -6,7 +6,7 @@ import (
 	"os"
 	"plugin"
 
-	mr "github.com/com/oizgagin/mit6824/lab1/mapreduce"
+	mr "github.com/oizgagin/mit6824/lab1/mapreduce"
 )
 
 func main() {

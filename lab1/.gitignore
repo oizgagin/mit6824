@@ -1,3 +1,6 @@
 *.so
 mapreduce/testing/mr-out-0
 mapreduce/testing/sequential
+mapreduce/testing/mr-tmp
+mapreduce/coordinator/coordinator
+mapreduce/worker/worker
