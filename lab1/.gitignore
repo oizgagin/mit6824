@@ -1,1 +1,3 @@
 *.so
+mapreduce/testing/mr-out-0
+mapreduce/testing/sequential
