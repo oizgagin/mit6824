@@ -6,7 +6,7 @@ import (
 	"os"
 	"plugin"
 
-	mr "github.com/oizgagin/mit6824/lab1/mapreduce"
+	"github.com/oizgagin/mit6824/lab1/mapreduce"
 )
 
 func main() {
@@ -17,14 +17,14 @@ func main() {
 
 	mapf, reducef := loadPlugin(os.Args[1])
 
-	mr.Worker(mapf, reducef)
+	mapreduce.Worker(mapf, reducef)
 }
 
 //
 // load the application Map and Reduce functions
 // from a plugin file, e.g. ../apps/wc.so
 //
-func loadPlugin(filename string) (func(string, string) []mr.KeyValue, func(string, []string) string) {
+func loadPlugin(filename string) (func(string, string) []mapreduce.KeyValue, func(string, []string) string) {
 	p, err := plugin.Open(filename)
 	if err != nil {
 		log.Fatalf("cannot load plugin %v", filename)
@@ -33,7 +33,7 @@ func loadPlugin(filename string) (func(string, string) []mr.KeyValue, func(strin
 	if err != nil {
 		log.Fatalf("cannot find Map in %v", filename)
 	}
-	mapf := xmapf.(func(string, string) []mr.KeyValue)
+	mapf := xmapf.(func(string, string) []mapreduce.KeyValue)
 	xreducef, err := p.Lookup("Reduce")
 	if err != nil {
 		log.Fatalf("cannot find Reduce in %v", filename)

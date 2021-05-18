@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	mr "github.com/oizgagin/mit6824/lab1/mapreduce"
+	"github.com/oizgagin/mit6824/lab1/mapreduce"
 )
 
 func main() {
@@ -14,7 +14,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	m := mr.MakeCoordinator(os.Args[1:], 10)
+	m := mapreduce.MakeCoordinator(os.Args[1:], 10)
 	for m.Done() == false {
 		time.Sleep(time.Second)
 	}
