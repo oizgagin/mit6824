@@ -40,16 +40,16 @@ rm -f mr-out*
 
 echo '***' Starting wc test.
 
-timeout -k 2s 180s ../mrcoordinator ../pg*txt &
+timeout -k 2s 180s ../../coordinator/coordinator ../testdata/pg*txt &
 pid=$!
 
 # give the coordinator time to create the sockets.
 sleep 1
 
 # start multiple workers.
-timeout -k 2s 180s ../worker ../../apps/wc.so &
-timeout -k 2s 180s ../worker ../../apps/wc.so &
-timeout -k 2s 180s ../worker ../../apps/wc.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/wc.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/wc.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/wc.so &
 
 # wait for the coordinator to exit.
 wait $pid
@@ -74,18 +74,18 @@ wait
 rm -f mr-*
 
 # generate the correct output
-../sequential ../../apps/indexer.so ../pg*txt || exit 1
+../sequential ../../apps/indexer.so ../testdata/pg*txt || exit 1
 sort mr-out-0 > mr-correct-indexer.txt
 rm -f mr-out*
 
 echo '***' Starting indexer test.
 
-timeout -k 2s 180s ../mrcoordinator ../pg*txt &
+timeout -k 2s 180s ../../../coordinator/coordinator ../testdata/pg*txt &
 sleep 1
 
 # start multiple workers
-timeout -k 2s 180s ../worker ../../apps/indexer.so &
-timeout -k 2s 180s ../worker ../../apps/indexer.so
+timeout -k 2s 180s ../../worker ../../apps/indexer.so &
+timeout -k 2s 180s ../../worker ../../apps/indexer.so
 
 sort mr-out* | grep . > mr-indexer-all
 if cmp mr-indexer-all mr-correct-indexer.txt
@@ -104,11 +104,11 @@ echo '***' Starting map parallelism test.
 
 rm -f mr-*
 
-timeout -k 2s 180s ../mrcoordinator ../pg*txt &
+timeout -k 2s 180s ../../coordinator/coordinator ../testdata/pg*txt &
 sleep 1
 
-timeout -k 2s 180s ../worker ../../apps/mtiming.so &
-timeout -k 2s 180s ../worker ../../apps/mtiming.so
+timeout -k 2s 180s ../../worker/worker ../../apps/mtiming.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/mtiming.so
 
 NT=`cat mr-out* | grep '^times-' | wc -l | sed 's/ //g'`
 if [ "$NT" != "2" ]
@@ -135,11 +135,11 @@ echo '***' Starting reduce parallelism test.
 
 rm -f mr-*
 
-timeout -k 2s 180s ../mrcoordinator ../pg*txt &
+timeout -k 2s 180s ../../coordinator/coordinator ../testdata/pg*txt &
 sleep 1
 
-timeout -k 2s 180s ../worker ../../apps/rtiming.so &
-timeout -k 2s 180s ../worker ../../apps/rtiming.so
+timeout -k 2s 180s ../../worker/worker ../../apps/rtiming.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/rtiming.so
 
 NT=`cat mr-out* | grep '^[a-z] 2' | wc -l | sed 's/ //g'`
 if [ "$NT" -lt "2" ]
@@ -158,16 +158,16 @@ echo '***' Starting job count test.
 
 rm -f mr-*
 
-timeout -k 2s 180s ../mrcoordinator ../pg*txt &
+timeout -k 2s 180s ../../coordinator/coordinator ../testdata/pg*txt &
 sleep 1
 
-timeout -k 2s 180s ../worker ../../apps/jobcount.so &
-timeout -k 2s 180s ../worker ../../apps/jobcount.so
-timeout -k 2s 180s ../worker ../../apps/jobcount.so &
-timeout -k 2s 180s ../worker ../../apps/jobcount.so
+timeout -k 2s 180s ../../worker/worker ../../apps/jobcount.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/jobcount.so
+timeout -k 2s 180s ../../worker/worker ../../apps/jobcount.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/jobcount.so
 
 NT=`cat mr-out* | awk '{print $2}'`
-if [ "$NT" -ne "8" ]
+if [[ "$NT" -ne "8" ]]
 then
   echo '---' map jobs ran incorrect number of times "($NT != 8)"
   echo '---' job count test: FAIL
@@ -185,15 +185,15 @@ rm -f mr-*
 
 echo '***' Starting early exit test.
 
-timeout -k 2s 180s ../mrcoordinator ../pg*txt &
+timeout -k 2s 180s ../../coordinator/coordinator ../testdata/pg*txt &
 
 # give the coordinator time to create the sockets.
 sleep 1
 
 # start multiple workers.
-timeout -k 2s 180s ../worker ../../apps/early_exit.so &
-timeout -k 2s 180s ../worker ../../apps/early_exit.so &
-timeout -k 2s 180s ../worker ../../apps/early_exit.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/early_exit.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/early_exit.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/early_exit.so &
 
 # wait for any of the coord or workers to exit
 # `jobs` ensures that any completed old processes from other tests
@@ -224,35 +224,35 @@ rm -f mr-*
 echo '***' Starting crash test.
 
 # generate the correct output
-../sequential ../../apps/nocrash.so ../pg*txt || exit 1
+../sequential ../../apps/nocrash.so ../testdata/pg*txt || exit 1
 sort mr-out-0 > mr-correct-crash.txt
 rm -f mr-out*
 
 rm -f mr-done
-(timeout -k 2s 180s ../mrcoordinator ../pg*txt ; touch mr-done ) &
+(timeout -k 2s 180s ../../coordinator/coordinator ../testdata/pg*txt ; touch mr-done ) &
 sleep 1
 
 # start multiple workers
-timeout -k 2s 180s ../worker ../../apps/crash.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/crash.so &
 
 # mimic rpc.go's coordinatorSock()
 SOCKNAME=/var/tmp/824-mr-`id -u`
 
 ( while [ -e $SOCKNAME -a ! -f mr-done ]
   do
-    timeout -k 2s 180s ../worker ../../apps/crash.so
+    timeout -k 2s 180s ../../worker/worker ../../apps/crash.so
     sleep 1
   done ) &
 
 ( while [ -e $SOCKNAME -a ! -f mr-done ]
   do
-    timeout -k 2s 180s ../worker ../../apps/crash.so
+    timeout -k 2s 180s ../../worker/worker ../../apps/crash.so
     sleep 1
   done ) &
 
 while [ -e $SOCKNAME -a ! -f mr-done ]
 do
-  timeout -k 2s 180s ../worker ../../apps/crash.so
+  timeout -k 2s 180s ../../worker/worker ../../apps/crash.so
   sleep 1
 done
 
