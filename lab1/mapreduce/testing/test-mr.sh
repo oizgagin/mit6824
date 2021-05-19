@@ -80,12 +80,12 @@ rm -f mr-out*
 
 echo '***' Starting indexer test.
 
-timeout -k 2s 180s ../../../coordinator/coordinator ../testdata/pg*txt &
+timeout -k 2s 180s ../../coordinator/coordinator ../testdata/pg*txt &
 sleep 1
 
 # start multiple workers
-timeout -k 2s 180s ../../worker ../../apps/indexer.so &
-timeout -k 2s 180s ../../worker ../../apps/indexer.so
+timeout -k 2s 180s ../../worker/worker ../../apps/indexer.so &
+timeout -k 2s 180s ../../worker/worker ../../apps/indexer.so
 
 sort mr-out* | grep . > mr-indexer-all
 if cmp mr-indexer-all mr-correct-indexer.txt
