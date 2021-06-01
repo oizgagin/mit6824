@@ -1,35 +1,48 @@
 package mapreduce
 
-//
-// RPC definitions.
-//
-// remember to capitalize all names.
-//
-
 import (
 	"os"
 	"strconv"
 )
 
-//
-// example to show how to declare the arguments
-// and reply for an RPC.
-//
+type WorkerID string
 
-type ExampleArgs struct {
-	X int
+type GetTaskArgs struct {
+	WorkerID WorkerID
 }
 
-type ExampleReply struct {
-	Y int
+type TaskType string
+
+const (
+	TaskTypeMap    TaskType = "TASK_TYPE_MAP"
+	TaskTypeReduce TaskType = "TASK_TYPE_REDUCE"
+)
+
+type TaskStatus string
+
+const (
+	TaskStatusTaskAvailable    TaskStatus = "TASK_STATUS_TASK_AVAILABLE"
+	TaskStatusNoTasksAvailable TaskStatus = "TASK_STATUS_NO_TASKS_AVAILABLE"
+	TaskStatusNoMoreTasks      TaskStatus = "TASK_STATUS_NO_MORE_TASKS"
+)
+
+type GetTaskReply struct {
+	Type       TaskType
+	Status     TaskStatus
+	Filenames  []string
+	Partitions int
+	TaskID     TaskID
 }
 
-// Add your RPC definitions here.
+type TaskDoneArgs struct {
+	WorkerID  WorkerID
+	Type      TaskType
+	Filenames []string
+	TaskID    TaskID
+}
 
-// Cook up a unique-ish UNIX-domain socket name
-// in /var/tmp, for the coordinator.
-// Can't use the current directory since
-// Athena AFS doesn't support UNIX-domain sockets.
+type TaskDoneReply struct{}
+
 func coordinatorSock() string {
 	s := "/var/tmp/824-mr-"
 	s += strconv.Itoa(os.Getuid())
