@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"flag"
 	"log"
 	"net"
 	"net/http"
@@ -12,13 +12,18 @@ import (
 	mrrpc "github.com/oizgagin/mit6824/mapreduce/rpc"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: coordinator inputfiles...\n")
-		os.Exit(1)
-	}
+var (
+	mapTimeout    = flag.Duration("map-timeout", 10*time.Second, "timeout for map tasks")
+	reduceTimeout = flag.Duration("reduce-timeout", 10*time.Second, "timeout for reduce tasks")
+	reduceNo      = flag.Int("reduce-no", 10, "number of reduces")
+)
 
-	c := MakeCoordinator(os.Args[1:], 10)
+func init() {
+	flag.Parse()
+}
+
+func main() {
+	c := MakeCoordinator(flag.Args(), *mapTimeout, *reduceTimeout, *reduceNo)
 	go serve(c)
 
 	for c.Done() == false {

@@ -23,16 +23,14 @@ type Coordinator struct {
 	reducen     int                     // total # of reduces
 }
 
-const DefaultTaskTimeout = 10 * time.Second
-
-func MakeCoordinator(files []string, reducen int) *Coordinator {
-	mapsched := NewScheduler(DefaultTaskTimeout)
+func MakeCoordinator(files []string, mapTimeout, reduceTimeout time.Duration, reducen int) *Coordinator {
+	mapsched := NewScheduler(mapTimeout)
 	maptasks := make(map[TaskID]string)
 	for _, file := range files {
 		maptasks[mapsched.AddTask()] = file
 	}
 
-	reducesched := NewScheduler(DefaultTaskTimeout)
+	reducesched := NewScheduler(reduceTimeout)
 	reducetasks := make(map[TaskID]int)
 	for i := 0; i < reducen; i++ {
 		reducetasks[reducesched.AddTask()] = i
