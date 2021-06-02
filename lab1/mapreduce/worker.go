@@ -64,8 +64,8 @@ LOOP:
 			continue LOOP
 		}
 
-		if err := markDone(workerID, task.TaskID, task.Type, filenames); err != nil {
-			log.Printf("markDone(%v, %v, %v, %v) error: %v", workerID, task.TaskID, task.Type, filenames, err)
+		if err := markDone(workerID, task.Type, filenames); err != nil {
+			log.Printf("markDone(%v, %v, %v) error: %v", workerID, task.Type, filenames, err)
 			time.Sleep(retryTimeout)
 		}
 	}
@@ -77,8 +77,8 @@ func getTask(workerID WorkerID) (GetTaskReply, error) {
 	return reply, err
 }
 
-func markDone(workerID WorkerID, taskID TaskID, taskType TaskType, filenames []string) error {
-	args := TaskDoneArgs{WorkerID: workerID, Type: taskType, Filenames: filenames, TaskID: taskID}
+func markDone(workerID WorkerID, taskType TaskType, filenames []string) error {
+	args := TaskDoneArgs{WorkerID: workerID, Type: taskType, Filenames: filenames}
 	return call("Coordinator.TaskDone", args, &TaskDoneReply{})
 }
 

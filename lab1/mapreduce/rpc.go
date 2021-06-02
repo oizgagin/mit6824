@@ -31,14 +31,12 @@ type GetTaskReply struct {
 	Status     TaskStatus
 	Filenames  []string
 	Partitions int
-	TaskID     TaskID
 }
 
 type TaskDoneArgs struct {
 	WorkerID  WorkerID
 	Type      TaskType
 	Filenames []string
-	TaskID    TaskID
 }
 
 type TaskDoneReply struct{}

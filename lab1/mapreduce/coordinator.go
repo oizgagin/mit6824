@@ -13,15 +13,17 @@ import (
 type Coordinator struct {
 	mapsched *Scheduler
 	mapmu    sync.Mutex
-	maptasks map[TaskID]string
-	mapp     map[TaskID]WorkerID
+	maptasks map[TaskID]string   // map task is just a filename of a file to perform map onto
+	mapp     map[TaskID]WorkerID // map tasks currently in progress
+	mapw     map[WorkerID]TaskID // workers currently doing maps
 
 	reducesched *Scheduler
 	reducemu    sync.Mutex
-	reducetasks map[TaskID]int
-	reducep     map[TaskID]WorkerID
-	reducefs    [][]string
-	reducen     int
+	reducetasks map[TaskID]int      // reduce task is just reduce number
+	reducep     map[TaskID]WorkerID // reduce tasks currently in progress
+	reducew     map[WorkerID]TaskID // workers currently doing reduces
+	reducefs    [][]string          // reducefs[i] stores the inputs to the i-th reduce
+	reducen     int                 // total # of reduces
 }
 
 const DefaultTaskTimeout = 10 * time.Second
@@ -43,10 +45,12 @@ func MakeCoordinator(files []string, reducen int) *Coordinator {
 		mapsched: mapsched,
 		maptasks: maptasks,
 		mapp:     make(map[TaskID]WorkerID),
+		mapw:     make(map[WorkerID]TaskID),
 
 		reducesched: reducesched,
 		reducetasks: reducetasks,
 		reducep:     make(map[TaskID]WorkerID),
+		reducew:     make(map[WorkerID]TaskID),
 		reducefs:    make([][]string, reducen),
 		reducen:     reducen,
 	}
@@ -57,22 +61,23 @@ func MakeCoordinator(files []string, reducen int) *Coordinator {
 }
 
 func (c *Coordinator) GetTask(args GetTaskArgs, reply *GetTaskReply) error {
-	workerID := args.WorkerID
-
 	c.mapmu.Lock()
 	defer c.mapmu.Unlock()
 
 	mtaskID, mstatus := c.mapsched.GetTask()
 
 	if mstatus == SchedulerStatusTaskAvailable {
-		c.mapp[mtaskID] = workerID
+		c.mapp[mtaskID] = args.WorkerID
+		c.mapw[args.WorkerID] = mtaskID
+
 		reply.Type = TaskTypeMap
 		reply.Status = TaskStatusTaskAvailable
 		reply.Filenames = []string{c.maptasks[mtaskID]}
 		reply.Partitions = c.reducen
-		reply.TaskID = mtaskID
+
 		return nil
 	}
+
 	if mstatus == SchedulerStatusNoTasksAvailable {
 		reply.Status = TaskStatusNoTasksAvailable
 		return nil
@@ -84,20 +89,24 @@ func (c *Coordinator) GetTask(args GetTaskArgs, reply *GetTaskReply) error {
 	rtaskID, rstatus := c.reducesched.GetTask()
 
 	if rstatus == SchedulerStatusTaskAvailable {
-		c.reducep[rtaskID] = workerID
+		c.reducep[rtaskID] = args.WorkerID
+		c.reducew[args.WorkerID] = rtaskID
+
 		reply.Type = TaskTypeReduce
 		reply.Status = TaskStatusTaskAvailable
 		reply.Filenames = c.reducefs[c.reducetasks[rtaskID]]
 		reply.Partitions = c.reducetasks[rtaskID]
-		reply.TaskID = rtaskID
+
 		return nil
 	}
+
 	if rstatus == SchedulerStatusNoTasksAvailable {
 		reply.Status = TaskStatusNoTasksAvailable
 		return nil
 	}
 
 	reply.Status = TaskStatusNoMoreTasks
+
 	return nil
 }
 
@@ -109,10 +118,15 @@ func (c *Coordinator) TaskDone(args TaskDoneArgs, reply *TaskDoneReply) error {
 	defer c.reducemu.Unlock()
 
 	if args.Type == TaskTypeMap {
-		if c.mapp[args.TaskID] == args.WorkerID {
-			c.mapsched.TaskDone(args.TaskID)
-			delete(c.mapp, args.TaskID)
-			delete(c.maptasks, args.TaskID)
+		mtaskID, has := c.mapw[args.WorkerID]
+		if !has {
+			return nil
+		}
+
+		if c.mapp[mtaskID] == args.WorkerID {
+			c.mapsched.TaskDone(mtaskID)
+			delete(c.mapp, mtaskID)
+			delete(c.maptasks, mtaskID)
 
 			for i := 0; i < len(args.Filenames); i++ {
 				c.reducefs[i] = append(c.reducefs[i], args.Filenames[i])
@@ -121,10 +135,15 @@ func (c *Coordinator) TaskDone(args TaskDoneArgs, reply *TaskDoneReply) error {
 	}
 
 	if args.Type == TaskTypeReduce {
-		if c.reducep[args.TaskID] == args.WorkerID {
-			c.reducesched.TaskDone(args.TaskID)
-			delete(c.reducep, args.TaskID)
-			delete(c.reducetasks, args.TaskID)
+		rtaskID, has := c.reducew[args.WorkerID]
+		if !has {
+			return nil
+		}
+
+		if c.reducep[rtaskID] == args.WorkerID {
+			c.reducesched.TaskDone(rtaskID)
+			delete(c.reducep, rtaskID)
+			delete(c.reducetasks, rtaskID)
 		}
 	}
 
