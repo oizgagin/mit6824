@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/oizgagin/mit6824/lab1/mapreduce"
+	"github.com/oizgagin/mit6824/mapreduce"
 )
 
 func main() {

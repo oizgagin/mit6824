@@ -14,7 +14,7 @@ import (
 	"plugin"
 	"sort"
 
-	mr "github.com/oizgagin/mit6824/lab1/mapreduce"
+	mr "github.com/oizgagin/mit6824/mapreduce"
 )
 
 // for sorting by key.

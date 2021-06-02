@@ -8,14 +8,17 @@ package main
 // go build -buildmode=plugin crash.go
 //
 
-import mr "github.com/oizgagin/mit6824/lab1/mapreduce"
-import "math/rand"
-import "strings"
-import "strconv"
-import "time"
-import "fmt"
-import "os"
-import "io/ioutil"
+import (
+	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	mr "github.com/oizgagin/mit6824/mapreduce"
+)
 
 var count int
 

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode"
 
-	mr "github.com/oizgagin/mit6824/lab1/mapreduce"
+	mr "github.com/oizgagin/mit6824/mapreduce"
 )
 
 // The mapping function is called once for each piece of the input.

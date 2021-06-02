@@ -7,12 +7,15 @@ package main
 // go build -buildmode=plugin rtiming.go
 //
 
-import mr "github.com/oizgagin/mit6824/lab1/mapreduce"
-import "fmt"
-import "os"
-import "syscall"
-import "time"
-import "io/ioutil"
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"syscall"
+	"time"
+
+	mr "github.com/oizgagin/mit6824/mapreduce"
+)
 
 func nparallel(phase string) int {
 	// create a file so that other workers will see that
