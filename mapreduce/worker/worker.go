@@ -1,4 +1,4 @@
-package mapreduce
+package main
 
 import (
 	"encoding/json"
@@ -11,17 +11,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
-)
 
-type KeyValue struct {
-	Key   string
-	Value string
-}
+	mr "github.com/oizgagin/mit6824/mapreduce"
+	mrrpc "github.com/oizgagin/mit6824/mapreduce/rpc"
+)
 
 const retryTimeout = time.Second
 
-func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
-	workerID := WorkerID("worker-" + strconv.Itoa(os.Getpid()))
+func Worker(mapf func(string, string) []mr.KeyValue, reducef func(string, []string) string) {
+	workerID := mrrpc.WorkerID("worker-" + strconv.Itoa(os.Getpid()))
 
 LOOP:
 	for {
@@ -32,25 +30,25 @@ LOOP:
 			continue LOOP
 		}
 
-		if task.Status == TaskStatusNoTasksAvailable {
+		if task.Status == mrrpc.TaskStatusNoTasksAvailable {
 			time.Sleep(retryTimeout)
 			continue LOOP
 		}
 
-		if task.Status == TaskStatusNoMoreTasks {
+		if task.Status == mrrpc.TaskStatusNoMoreTasks {
 			return
 		}
 
 		var filenames []string
 
-		if task.Type == TaskTypeMap {
+		if task.Type == mrrpc.TaskTypeMap {
 			filenames, err = doMap(mapf, workerID, task.Filenames[0], task.Partitions)
 			if err != nil {
 				log.Printf("doMap(%v, %v, %v) error: %v", workerID, task.Filenames[0], task.Partitions, err)
 			}
 		}
 
-		if task.Type == TaskTypeReduce {
+		if task.Type == mrrpc.TaskTypeReduce {
 			filename, err := doReduce(reducef, task.Filenames, task.Partitions)
 			if err != nil {
 				log.Printf("doReduce(%v, %v) error: %v", task.Filenames, task.Partitions, err)
@@ -71,18 +69,18 @@ LOOP:
 	}
 }
 
-func getTask(workerID WorkerID) (GetTaskReply, error) {
-	args, reply := GetTaskArgs{WorkerID: workerID}, GetTaskReply{}
+func getTask(workerID mrrpc.WorkerID) (mrrpc.GetTaskReply, error) {
+	args, reply := mrrpc.GetTaskArgs{WorkerID: workerID}, mrrpc.GetTaskReply{}
 	err := call("Coordinator.GetTask", args, &reply)
 	return reply, err
 }
 
-func markDone(workerID WorkerID, taskType TaskType, filenames []string) error {
-	args := TaskDoneArgs{WorkerID: workerID, Type: taskType, Filenames: filenames}
-	return call("Coordinator.TaskDone", args, &TaskDoneReply{})
+func markDone(workerID mrrpc.WorkerID, taskType mrrpc.TaskType, filenames []string) error {
+	args := mrrpc.TaskDoneArgs{WorkerID: workerID, Type: taskType, Filenames: filenames}
+	return call("Coordinator.TaskDone", args, &mrrpc.TaskDoneReply{})
 }
 
-func doMap(mapf func(string, string) []KeyValue, workerID WorkerID, filename string, partitions int) ([]string, error) {
+func doMap(mapf func(string, string) []mr.KeyValue, workerID mrrpc.WorkerID, filename string, partitions int) ([]string, error) {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("could not read %v: %v", filename, err)
@@ -90,7 +88,7 @@ func doMap(mapf func(string, string) []KeyValue, workerID WorkerID, filename str
 
 	kvs := mapf(filename, string(content))
 
-	parts := make([][]KeyValue, partitions)
+	parts := make([][]mr.KeyValue, partitions)
 	for _, kv := range kvs {
 		partno := ihash(kv.Key) % partitions
 		parts[partno] = append(parts[partno], kv)
@@ -121,7 +119,7 @@ func doMap(mapf func(string, string) []KeyValue, workerID WorkerID, filename str
 }
 
 func doReduce(reducef func(string, []string) string, filenames []string, partition int) (string, error) {
-	var kvs []KeyValue
+	var kvs []mr.KeyValue
 
 	for _, filename := range filenames {
 		f, err := os.Open(filename)
@@ -132,7 +130,7 @@ func doReduce(reducef func(string, []string) string, filenames []string, partiti
 
 		dec := json.NewDecoder(f)
 
-		var kvss []KeyValue
+		var kvss []mr.KeyValue
 		if err := dec.Decode(&kvss); err != nil {
 			return "", fmt.Errorf("could not decode %v: %v", filename, err)
 		}
@@ -175,7 +173,7 @@ func cleanup(filenames []string) {
 }
 
 func call(rpcname string, args interface{}, reply interface{}) error {
-	sockname := coordinatorSock()
+	sockname := mrrpc.CoordinatorSock()
 	c, err := rpc.DialHTTP("unix", sockname)
 	if err != nil {
 		log.Fatal("dialing:", err)

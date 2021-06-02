@@ -1,4 +1,4 @@
-package mapreduce
+package main
 
 import (
 	"sync"

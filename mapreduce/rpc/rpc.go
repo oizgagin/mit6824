@@ -1,4 +1,4 @@
-package mapreduce
+package rpc
 
 import (
 	"os"
@@ -41,7 +41,7 @@ type TaskDoneArgs struct {
 
 type TaskDoneReply struct{}
 
-func coordinatorSock() string {
+func CoordinatorSock() string {
 	s := "/var/tmp/824-mr-"
 	s += strconv.Itoa(os.Getuid())
 	return s

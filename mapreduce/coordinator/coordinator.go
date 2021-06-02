@@ -1,29 +1,26 @@
-package mapreduce
+package main
 
 import (
-	"log"
-	"net"
-	"net/http"
-	"net/rpc"
-	"os"
 	"sync"
 	"time"
+
+	"github.com/oizgagin/mit6824/mapreduce/rpc"
 )
 
 type Coordinator struct {
 	mapsched *Scheduler
 	mapmu    sync.Mutex
-	maptasks map[TaskID]string   // map task is just a filename of a file to perform map onto
-	mapp     map[TaskID]WorkerID // map tasks currently in progress
-	mapw     map[WorkerID]TaskID // workers currently doing maps
+	maptasks map[TaskID]string       // map task is just a filename of a file to perform map onto
+	mapp     map[TaskID]rpc.WorkerID // map tasks currently in progress
+	mapw     map[rpc.WorkerID]TaskID // workers currently doing maps
 
 	reducesched *Scheduler
 	reducemu    sync.Mutex
-	reducetasks map[TaskID]int      // reduce task is just reduce number
-	reducep     map[TaskID]WorkerID // reduce tasks currently in progress
-	reducew     map[WorkerID]TaskID // workers currently doing reduces
-	reducefs    [][]string          // reducefs[i] stores the inputs to the i-th reduce
-	reducen     int                 // total # of reduces
+	reducetasks map[TaskID]int          // reduce task is just reduce number
+	reducep     map[TaskID]rpc.WorkerID // reduce tasks currently in progress
+	reducew     map[rpc.WorkerID]TaskID // workers currently doing reduces
+	reducefs    [][]string              // reducefs[i] stores the inputs to the i-th reduce
+	reducen     int                     // total # of reduces
 }
 
 const DefaultTaskTimeout = 10 * time.Second
@@ -41,26 +38,22 @@ func MakeCoordinator(files []string, reducen int) *Coordinator {
 		reducetasks[reducesched.AddTask()] = i
 	}
 
-	c := Coordinator{
+	return &Coordinator{
 		mapsched: mapsched,
 		maptasks: maptasks,
-		mapp:     make(map[TaskID]WorkerID),
-		mapw:     make(map[WorkerID]TaskID),
+		mapp:     make(map[TaskID]rpc.WorkerID),
+		mapw:     make(map[rpc.WorkerID]TaskID),
 
 		reducesched: reducesched,
 		reducetasks: reducetasks,
-		reducep:     make(map[TaskID]WorkerID),
-		reducew:     make(map[WorkerID]TaskID),
+		reducep:     make(map[TaskID]rpc.WorkerID),
+		reducew:     make(map[rpc.WorkerID]TaskID),
 		reducefs:    make([][]string, reducen),
 		reducen:     reducen,
 	}
-
-	go c.serve()
-
-	return &c
 }
 
-func (c *Coordinator) GetTask(args GetTaskArgs, reply *GetTaskReply) error {
+func (c *Coordinator) GetTask(args rpc.GetTaskArgs, reply *rpc.GetTaskReply) error {
 	c.mapmu.Lock()
 	defer c.mapmu.Unlock()
 
@@ -70,8 +63,8 @@ func (c *Coordinator) GetTask(args GetTaskArgs, reply *GetTaskReply) error {
 		c.mapp[mtaskID] = args.WorkerID
 		c.mapw[args.WorkerID] = mtaskID
 
-		reply.Type = TaskTypeMap
-		reply.Status = TaskStatusTaskAvailable
+		reply.Type = rpc.TaskTypeMap
+		reply.Status = rpc.TaskStatusTaskAvailable
 		reply.Filenames = []string{c.maptasks[mtaskID]}
 		reply.Partitions = c.reducen
 
@@ -79,7 +72,7 @@ func (c *Coordinator) GetTask(args GetTaskArgs, reply *GetTaskReply) error {
 	}
 
 	if mstatus == SchedulerStatusNoTasksAvailable {
-		reply.Status = TaskStatusNoTasksAvailable
+		reply.Status = rpc.TaskStatusNoTasksAvailable
 		return nil
 	}
 
@@ -92,8 +85,8 @@ func (c *Coordinator) GetTask(args GetTaskArgs, reply *GetTaskReply) error {
 		c.reducep[rtaskID] = args.WorkerID
 		c.reducew[args.WorkerID] = rtaskID
 
-		reply.Type = TaskTypeReduce
-		reply.Status = TaskStatusTaskAvailable
+		reply.Type = rpc.TaskTypeReduce
+		reply.Status = rpc.TaskStatusTaskAvailable
 		reply.Filenames = c.reducefs[c.reducetasks[rtaskID]]
 		reply.Partitions = c.reducetasks[rtaskID]
 
@@ -101,23 +94,23 @@ func (c *Coordinator) GetTask(args GetTaskArgs, reply *GetTaskReply) error {
 	}
 
 	if rstatus == SchedulerStatusNoTasksAvailable {
-		reply.Status = TaskStatusNoTasksAvailable
+		reply.Status = rpc.TaskStatusNoTasksAvailable
 		return nil
 	}
 
-	reply.Status = TaskStatusNoMoreTasks
+	reply.Status = rpc.TaskStatusNoMoreTasks
 
 	return nil
 }
 
-func (c *Coordinator) TaskDone(args TaskDoneArgs, reply *TaskDoneReply) error {
+func (c *Coordinator) TaskDone(args rpc.TaskDoneArgs, reply *rpc.TaskDoneReply) error {
 	c.mapmu.Lock()
 	defer c.mapmu.Unlock()
 
 	c.reducemu.Lock()
 	defer c.reducemu.Unlock()
 
-	if args.Type == TaskTypeMap {
+	if args.Type == rpc.TaskTypeMap {
 		mtaskID, has := c.mapw[args.WorkerID]
 		if !has {
 			return nil
@@ -134,7 +127,7 @@ func (c *Coordinator) TaskDone(args TaskDoneArgs, reply *TaskDoneReply) error {
 		}
 	}
 
-	if args.Type == TaskTypeReduce {
+	if args.Type == rpc.TaskTypeReduce {
 		rtaskID, has := c.reducew[args.WorkerID]
 		if !has {
 			return nil
@@ -152,17 +145,4 @@ func (c *Coordinator) TaskDone(args TaskDoneArgs, reply *TaskDoneReply) error {
 
 func (c *Coordinator) Done() bool {
 	return c.reducesched.Done()
-}
-
-func (c *Coordinator) serve() {
-	rpc.Register(c)
-	rpc.HandleHTTP()
-
-	sockname := coordinatorSock()
-	os.Remove(sockname)
-	l, e := net.Listen("unix", sockname)
-	if e != nil {
-		log.Fatal("listen error:", e)
-	}
-	go http.Serve(l, nil)
 }

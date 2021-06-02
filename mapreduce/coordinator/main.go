@@ -2,10 +2,14 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"net/rpc"
 	"os"
 	"time"
 
-	"github.com/oizgagin/mit6824/mapreduce"
+	mrrpc "github.com/oizgagin/mit6824/mapreduce/rpc"
 )
 
 func main() {
@@ -14,10 +18,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	m := mapreduce.MakeCoordinator(os.Args[1:], 10)
-	for m.Done() == false {
+	c := MakeCoordinator(os.Args[1:], 10)
+	go serve(c)
+
+	for c.Done() == false {
 		time.Sleep(time.Second)
 	}
-
 	time.Sleep(time.Second)
+}
+
+func serve(c *Coordinator) {
+	rpc.Register(c)
+	rpc.HandleHTTP()
+
+	sockname := mrrpc.CoordinatorSock()
+	os.Remove(sockname)
+	l, e := net.Listen("unix", sockname)
+	if e != nil {
+		log.Fatal("listen error:", e)
+	}
+	go http.Serve(l, nil)
 }

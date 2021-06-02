@@ -24,8 +24,8 @@ rm -f mr-*
 (cd ../../apps && go build $RACE -buildmode=plugin early_exit.go) || exit 1
 (cd ../../apps && go build $RACE -buildmode=plugin crash.go) || exit 1
 (cd ../../apps && go build $RACE -buildmode=plugin nocrash.go) || exit 1
-(cd ../../coordinator && go build $RACE -o coordinator main.go) || exit 1
-(cd ../../worker && go build $RACE -o worker main.go) || exit 1
+(cd ../../coordinator && go build $RACE -o coordinator *.go) || exit 1
+(cd ../../worker && go build $RACE -o worker *.go) || exit 1
 (cd ../ && go build $RACE sequential.go) || exit 1
 
 failed_any=0
